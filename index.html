@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Napa Book the Shelf Calculator</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel for in-browser JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Utility to hide scrollbar for clean UI */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Range Slider Styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #eab308; /* yellow-500 */
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: #cbd5e1; /* slate-300 */
+      border-radius: 2px;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // Inline SVG Icons replacing lucide-react dependencies
+    const Calculator = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>);
+    const RotateCcw = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
+    const Package = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>);
+    const ChevronRight = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>);
+    const Receipt = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>);
+
+    // ============================================================
+    // FIXED POLICIES (Hardcoded for maximum performance)
+    // ============================================================
+
+    const POLICIES = [
+      {
+        id: 'p1',
+        title: 'Solid Products',
+        products: [
+          { code: 'NAT', name: 'Napa 500mg Tab', pack: "500's", price: 528 },
+          { code: 'NAU', name: 'Napa 500mg Tab', pack: "510'S", price: 538.56 },
+          { code: 'NET', name: 'Napa Extra Tab', pack: "264'S", price: 579.74 },
+          { code: 'NEU', name: 'Napa Extend Tablet', pack: "144'S", price: 253.58 },
+          { code: 'NA1', name: 'Napa One Tab', pack: "200'S", price: 396.8 },
+          { code: 'NRP', name: 'Napa Rapid', pack: "270'S", price: 307.67 },
+          { code: 'N1P', name: 'Napa 125 Suppository', pack: "20's", price: 70.44 },
+          { code: 'N2P', name: 'Napa 250 Suppository', pack: "20's", price: 88.05 },
+          { code: 'N5P', name: 'Napa 500 Suppository', pack: "20's", price: 140.88 },
+        ],
+        rules: [
+          { key: 'Rice', name: 'CHINIGURA', threshold: 6000, remainderThreshold: 4000, type: 'remainder' },
+          { key: 'Wheel', name: 'DETERGENT', threshold: 3000, type: 'flat' }
+        ]
+      },
+      {
+        id: 'p2',
+        title: 'Liquid Products',
+        products: [
+          { code: 'NAS', name: 'Napa Syrup 60 ml', pack: '60ml', price: 30.8 },
+          { code: 'NPD', name: 'Napa Ped. Drop', pack: '15ml', price: 17.6 },
+          { code: 'NS1', name: 'Napa Syrup 100 ml', pack: '100ml', price: 44 },
+          { code: 'NSP', name: 'Napa Suspension 60 ml', pack: '60ml', price: 30.8 },
+        ],
+        rules: [
+          { key: 'Oil', name: 'OIL', threshold: 3000, type: 'recurring' },
+          { key: 'Soap', name: 'LUX', threshold: 1500, type: 'flat' }
+        ]
+      }
+    ];
+
+    // ============================================================
+    // REWARD MAPPINGS (Colors and Images)
+    // ============================================================
+
+    const GIFT_IMAGES = {
+      Rice: 'https://i.postimg.cc/HVWVjs3F/Chinigura-Rice.webp',
+      Wheel: 'https://i.postimg.cc/BjH902HK/Wheel.webp',
+      Oil: 'https://i.postimg.cc/7CnFCDKj/Soybean-oil.png',
+      Soap: 'https://i.postimg.cc/CdxgqBTj/Lux90.jpg'
+    };
+
+    const GIFT_COLORS = {
+      Rice: { bg: 'bg-stone-100', text: 'text-stone-800', border: 'border-stone-300', qtyBg: 'bg-stone-800', qtyText: 'text-white' },
+      Wheel: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300', qtyBg: 'bg-emerald-700', qtyText: 'text-white' },
+      Oil: { bg: 'bg-yellow-100', text: 'text-yellow-900', border: 'border-yellow-400', qtyBg: 'bg-yellow-400', qtyText: 'text-slate-900' },
+      Soap: { bg: 'bg-pink-100', text: 'text-pink-800', border: 'border-pink-300', qtyBg: 'bg-pink-600', qtyText: 'text-white' },
+      default: { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300', qtyBg: 'bg-slate-800', qtyText: 'text-white' }
+    };
+
+    // ============================================================
+    // CALCULATION LOGIC
+    // ============================================================
+
+    const calculateGifts = (rules, sectionAmount) => {
+      return rules.map(rule => {
+        let count = 0;
+        if (rule.type === 'recurring') {
+          count = Math.floor(sectionAmount / rule.threshold);
+        } else if (rule.type === 'remainder') {
+          count = Math.floor(sectionAmount / rule.threshold);
+          if ((sectionAmount % rule.threshold) >= rule.remainderThreshold) {
+            count += 1;
+          }
+        } else if (rule.type === 'flat') {
+          count = sectionAmount >= rule.threshold ? 1 : 0;
+        }
+        return { ...rule, count };
+      }).filter(g => g.count > 0);
+    };
+
+    // ============================================================
+    // COMPONENTS
+    // ============================================================
+
+    function App() {
+      const [quantities, setQuantities] = useState({});
+
+      const handleReset = () => {
+        setQuantities({});
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const handleQtyChange = (code, val) => {
+        const num = parseInt(val);
+        setQuantities(prev => ({
+          ...prev,
+          [code]: isNaN(num) || num <= 0 ? 0 : num
+        }));
+      };
+
+      const summary = useMemo(() => {
+        let grandTotal = 0;
+        let earnedGifts = [];
+        
+        const results = POLICIES.map(policy => {
+          const sectionTotal = policy.products.reduce((sum, p) => {
+            return sum + (quantities[p.code] || 0) * p.price;
+          }, 0);
+          
+          const gifts = calculateGifts(policy.rules, sectionTotal);
+          grandTotal += sectionTotal;
+          earnedGifts = [...earnedGifts, ...gifts];
+          
+          return { ...policy, sectionTotal, gifts };
+        });
+
+        return { results, grandTotal, earnedGifts };
+      }, [quantities]);
+
+      const fmt = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      return (
+        <div className="min-h-screen bg-slate-100 pb-52 font-sans text-slate-900">
+          
+          {/* Header */}
+          <header className="sticky top-0 z-50 bg-yellow-400 text-slate-950 shadow-md">
+            <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center">
+                <img 
+                  src="Napa.png" 
+                  alt="Napa" 
+                  className="h-8 sm:h-10 object-contain drop-shadow-sm"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/100x36/facc15/5c260b?text=Napa&font=lora";
+                  }}
+                />
+                <div className="ml-3 pl-3 border-l-2 border-slate-900/10">
+                  <h1 className="font-black text-[10px] sm:text-xs tracking-widest uppercase leading-tight opacity-90">
+                    Book the Shelf<br/>Calculator
+                  </h1>
+                </div>
+              </div>
+              <button 
+                onClick={handleReset}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-yellow-400 active:scale-95 px-4 py-2 rounded-lg text-xs font-black transition-all shadow-sm"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> RESET
+              </button>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+            {summary.results.map((section) => (
+              <section key={section.id} className="space-y-3">
+                
+                {/* Section Header */}
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-xs font-black text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                    <Package className="w-4 h-4 text-yellow-500" /> {section.title}
+                  </h2>
+                  <span className="text-xs font-mono font-bold bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-md">
+                    Subtotal: ৳{fmt(section.sectionTotal)}
+                  </span>
+                </div>
+
+                {/* Product List */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  {section.products.map((product) => (
+                    <div 
+                      key={product.code} 
+                      className={`p-4 border-b border-slate-100 last:border-0 transition-colors ${quantities[product.code] > 0 ? 'bg-yellow-50/80' : ''}`}
+                    >
+                      {/* Product Details & Input */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-slate-900 text-sm leading-tight">{product.name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-mono font-medium text-slate-500 uppercase">{product.code}</span>
+                            <span className="text-[10px] font-medium text-slate-400 uppercase">• {product.pack}</span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <input 
+                            type="number" 
+                            pattern="\d*" 
+                            inputMode="numeric"
+                            className="w-20 px-3 py-2 bg-white border border-slate-300 rounded-lg text-right font-mono font-bold text-lg text-slate-900 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
+                            placeholder="0"
+                            value={quantities[product.code] || ''}
+                            onChange={(e) => handleQtyChange(product.code, e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Product Range Slider */}
+                      <div className="mt-3 px-1">
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max={Math.max(300, (quantities[product.code] || 0) + 50)} 
+                          value={quantities[product.code] || 0}
+                          onChange={(e) => handleQtyChange(product.code, e.target.value)}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider px-1">
+                          <span>0</span>
+                          <span>Slide to Add</span>
+                          <span>Max</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Section Rewards Preview */}
+                {section.gifts.length > 0 && (
+                  <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rewards Unlocked</div>
+                    <div className="flex flex-wrap gap-3">
+                      {section.gifts.map((g, i) => {
+                        const colors = GIFT_COLORS[g.key] || GIFT_COLORS.default;
+                        const imgSrc = GIFT_IMAGES[g.key];
+                        return (
+                        <div key={i} className={`flex items-stretch border ${colors.border} rounded-lg overflow-hidden ${colors.bg}`}>
+                          {imgSrc && (
+                            <div className="w-10 bg-white flex items-center justify-center p-1 border-r border-black/5">
+                              <img src={imgSrc} alt={g.name} className="max-w-full max-h-full object-contain drop-shadow-sm" />
+                            </div>
+                          )}
+                          <div className={`px-2 py-1.5 flex items-center text-xs font-bold ${colors.text} uppercase tracking-wide`}>
+                            {g.name}
+                          </div>
+                          <div className={`${colors.qtyBg} ${colors.qtyText} px-3 py-1.5 flex items-center justify-center text-sm font-bold min-w-[36px] text-center ml-auto border-l border-black/10`}>
+                            {g.count}
+                          </div>
+                        </div>
+                      )})}
+                    </div>
+                  </div>
+                )}
+              </section>
+            ))}
+          </main>
+
+          {/* Sober, High-Usability Footer */}
+          <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
+            <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-4">
+              
+              {/* Rewards Wrap List */}
+              <div className="w-full">
+                {summary.earnedGifts.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                    {summary.earnedGifts.map((g, i) => {
+                      const colors = GIFT_COLORS[g.key] || GIFT_COLORS.default;
+                      const imgSrc = GIFT_IMAGES[g.key];
+                      return (
+                      <div key={i} className={`flex items-stretch border ${colors.border} rounded-lg overflow-hidden ${colors.bg} shadow-sm`}>
+                        {imgSrc && (
+                          <div className="w-12 bg-white flex items-center justify-center p-1 border-r border-black/5">
+                            <img src={imgSrc} alt={g.name} className="max-w-full max-h-full object-contain drop-shadow-sm" />
+                          </div>
+                        )}
+                        <div className={`px-3 py-2 flex items-center text-xs font-bold ${colors.text} uppercase tracking-wide`}>
+                          {g.name}
+                        </div>
+                        <div className={`${colors.qtyBg} ${colors.qtyText} px-3 py-2 flex items-center justify-center text-base font-black min-w-[44px] text-center ml-auto border-l border-black/10`}>
+                          {g.count}
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                ) : (
+                  <div className="text-slate-400 font-medium text-xs uppercase tracking-widest py-2">
+                    No rewards unlocked yet
+                  </div>
+                )}
+              </div>
+
+              {/* Totals and Action Button */}
+              <div className="flex items-end justify-between gap-4 pt-3 border-t border-slate-100">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <Receipt className="w-3 h-3" /> Invoice Total
+                  </div>
+                  <div className="text-2xl font-mono font-black text-slate-900 leading-none">
+                    ৳{fmt(summary.grandTotal)}
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={handleReset}
+                  disabled={summary.grandTotal === 0}
+                  className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white px-8 py-3.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all active:scale-95 shadow-md"
+                >
+                  DONE <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    // Render the React app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
