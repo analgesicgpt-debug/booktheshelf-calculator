@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Napa Chemist offer calculator 2026</title>
+  <title>Napa Book the Shelf Calculator</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -80,7 +80,7 @@
           { code: 'N5P', name: 'Napa 500 Suppository', pack: "20's", price: 140.88 },
         ],
         rules: [
-          { key: 'Rice', name: 'CHINIGURA', threshold: 6000, remainderThreshold: 4000, type: 'remainder' },
+          { key: 'Rice', name: 'CHINIGURA', threshold: 6000, type: 'recurring' },
           { key: 'Wheel', name: 'DETERGENT', threshold: 3000, type: 'flat' }
         ]
       },
@@ -124,7 +124,7 @@
     // ============================================================
 
     const calculateGifts = (rules, sectionAmount) => {
-      return rules.map(rule => {
+      let calculated = rules.map(rule => {
         let count = 0;
         if (rule.type === 'recurring') {
           count = Math.floor(sectionAmount / rule.threshold);
@@ -137,7 +137,21 @@
           count = sectionAmount >= rule.threshold ? 1 : 0;
         }
         return { ...rule, count };
-      }).filter(g => g.count > 0);
+      });
+
+      // Exclusivity rule: If Chinigura Rice is achieved, Wheel is not given
+      const hasRice = calculated.some(g => g.key === 'Rice' && g.count > 0);
+      if (hasRice) {
+        calculated = calculated.map(g => g.key === 'Wheel' ? { ...g, count: 0 } : g);
+      }
+
+      // Exclusivity rule: If Oil is achieved, Lux (Soap) is not given
+      const hasOil = calculated.some(g => g.key === 'Oil' && g.count > 0);
+      if (hasOil) {
+        calculated = calculated.map(g => g.key === 'Soap' ? { ...g, count: 0 } : g);
+      }
+
+      return calculated.filter(g => g.count > 0);
     };
 
     // ============================================================
@@ -199,7 +213,7 @@
                 />
                 <div className="ml-3 pl-3 border-l-2 border-slate-900/10">
                   <h1 className="font-black text-[10px] sm:text-xs tracking-widest uppercase leading-tight opacity-90">
-                    Chemist offer<br/>Calculator 2026
+                    Chemist offer calculator 2026
                   </h1>
                 </div>
               </div>
@@ -344,7 +358,7 @@
               <div className="flex items-end justify-between gap-4 pt-3 border-t border-slate-100">
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                    <Receipt className="w-3 h-3" /> Invoice Total (TP+VAT)
+                    <Receipt className="w-3 h-3" /> INVOICE TOTAL (TP+VAT)
                   </div>
                   <div className="text-2xl font-mono font-black text-slate-900 leading-none">
                     ৳{fmt(summary.grandTotal)}
