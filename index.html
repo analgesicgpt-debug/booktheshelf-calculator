@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Napa Book the Shelf Calculator</title>
+  <title>Napa Chemist offer calculator 2026</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -155,6 +155,28 @@
     };
 
     // ============================================================
+    // NON-LINEAR SLIDER MAPPING LOGIC
+    // ============================================================
+    
+    // Maps a quantity to a 0-100 slider value
+    const getSliderValue = (qty, threshold, max) => {
+      if (!qty) return 0;
+      if (qty <= threshold) {
+        return (qty / threshold) * 80; // 0 to threshold covers 0 to 80%
+      }
+      if (qty >= max) return 100;
+      return 80 + ((qty - threshold) / (max - threshold)) * 20; // threshold to max covers 80% to 100%
+    };
+
+    // Maps a 0-100 slider value back to a realistic quantity
+    const getQtyFromSlider = (sliderVal, threshold, max) => {
+      if (sliderVal <= 80) {
+        return Math.round((sliderVal / 80) * threshold);
+      }
+      return Math.round(threshold + ((sliderVal - 80) / 20) * (max - threshold));
+    };
+
+    // ============================================================
     // COMPONENTS
     // ============================================================
 
@@ -243,51 +265,67 @@
 
                 {/* Product List */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                  {section.products.map((product) => (
-                    <div 
-                      key={product.code} 
-                      className={`p-4 border-b border-slate-100 last:border-0 transition-colors ${quantities[product.code] > 0 ? 'bg-yellow-50/80' : ''}`}
-                    >
-                      {/* Product Details & Input */}
-                      <div className="flex items-center gap-4">
+                  {section.products.map((product) => {
+                    // Non-Linear Slider parameters mapping based on section
+                    const sliderThreshold = section.id === 'p1' ? 10 : 50; 
+                    const sliderMax = 300; // Hard max to provide enough room for standard large orders
+                    const currentQty = quantities[product.code] || 0;
+                    const mappedSliderVal = getSliderValue(currentQty, sliderThreshold, sliderMax);
+
+                    return (
+                      <div 
+                        key={product.code} 
+                        className={`p-4 border-b border-slate-100 last:border-0 transition-colors ${currentQty > 0 ? 'bg-yellow-50/80' : ''}`}
+                      >
+                        {/* Product Details & Input */}
+                        <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 text-sm leading-tight">{product.name}</div>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-[10px] font-mono font-medium text-slate-500 uppercase">{product.code}</span>
                             <span className="text-[10px] font-medium text-slate-400 uppercase">• {product.pack}</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">• TP+VAT: ৳{fmt(product.price)}</span>
                           </div>
                         </div>
                         <div className="flex-shrink-0">
                           <input 
                             type="number" 
-                            pattern="\d*" 
-                            inputMode="numeric"
-                            className="w-20 px-3 py-2 bg-white border border-slate-300 rounded-lg text-right font-mono font-bold text-lg text-slate-900 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
-                            placeholder="0"
-                            value={quantities[product.code] || ''}
-                            onChange={(e) => handleQtyChange(product.code, e.target.value)}
-                          />
+                              pattern="\d*" 
+                              inputMode="numeric"
+                              className="w-20 px-3 py-2 bg-white border border-slate-300 rounded-lg text-right font-mono font-bold text-lg text-slate-900 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
+                              placeholder="0"
+                              value={currentQty === 0 ? '' : currentQty}
+                              onChange={(e) => handleQtyChange(product.code, e.target.value)}
+                            />
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Product Range Slider */}
-                      <div className="mt-3 px-1">
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max={Math.max(300, (quantities[product.code] || 0) + 50)} 
-                          value={quantities[product.code] || 0}
-                          onChange={(e) => handleQtyChange(product.code, e.target.value)}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider px-1">
-                          <span>0</span>
-                          <span>Slide to Add</span>
-                          <span>Max</span>
+                        {/* Product Range Slider (Non-Linear) */}
+                        <div className="mt-3 px-1">
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            step="0.1"
+                            value={mappedSliderVal}
+                            onChange={(e) => {
+                              const newQty = getQtyFromSlider(parseFloat(e.target.value), sliderThreshold, sliderMax);
+                              handleQtyChange(product.code, newQty);
+                            }}
+                            className="w-full"
+                          />
+                          <div className="relative h-4 mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                            <span className="absolute left-1">0</span>
+                            <span className="absolute left-[80%] -translate-x-1/2 flex flex-col items-center">
+                              <span className="w-0.5 h-1.5 bg-slate-300 mb-0.5 rounded-full"></span>
+                              {sliderThreshold}
+                            </span>
+                            <span className="absolute right-1">{sliderMax}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Section Rewards Preview */}
